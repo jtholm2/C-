@@ -1,27 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
-using Bytescout.Spreadsheet;
 
 namespace ISS_API
 {    
     class Program
     {
-
         static void Main(string[] args)
         {
-            Spreadsheet workbook = new Spreadsheet();
-            Worksheet sheet = workbook.Workbook.Worksheets.Add("Coordinates");
-            sheet.Cell("A1").Value = "Longitude";
-            sheet.Cell("A2").Value = "Latitude";
-            sheet.Cell("A3").Value = "Time";
+            SqlConnection conn = new SqlConnection("Data Source={insert URL/datbase location here}; Initial Catalog={insert db name here}; User ID={insert username here}; Password={insert password here}");
             TimeSpan ts = new TimeSpan(0, 1, 0);
-            int i = 2;
+            int i = 1;
             while (true)
             {
+                
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://api.open-notify.org/iss-now.json");
 
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
@@ -29,27 +25,22 @@ namespace ISS_API
                 using (Stream dataStream = response.GetResponseStream())
                 {
                     StreamReader reader = new StreamReader(dataStream);
-
+                    conn.Open();
                     string responseFromServer = reader.ReadToEnd();
                     Console.WriteLine(responseFromServer);
                     List<string> TestList = responseFromServer.Split(new char[] { '\"' }).ToList();
-                    float Lon = float.Parse(TestList[5]);
-                    float Lat = float.Parse(TestList[9]);
-                    string Time = TestList[16].Substring(2, 10);
-                    string cellNameA = "A" + i;
-                    string cellNameB = "B" + i;
-                    string cellNameC = "C" + i;
-                    sheet[cellNameA].Value = Lon;
-                    sheet[cellNameB].Value = Lat;
-                    sheet[cellNameC].Value = Time;
+                    float Lon = float.Parse(TestList[15]);
+                    float Lat = float.Parse(TestList[11]);
+                    int Time = int.Parse(TestList[6].Substring(2, 10));
+                    string query = String.Format("INSERT INTO dbo.[Table] (id,time,Longitude,Latitude) VALUES ({0},{1},{2},{3})", i,Time,Lon,Lat);
+                    SqlCommand cmd = new SqlCommand(query, conn);
+                    cmd.ExecuteNonQuery();
                     i++;
-                    workbook.SaveAs("iss_tracking.xlsx");
                     response.Close();
-                    workbook.Close();
+                    conn.Close();
                     Thread.Sleep(ts);
                 }
-            }             
+            }
         }
-
     }
 }
